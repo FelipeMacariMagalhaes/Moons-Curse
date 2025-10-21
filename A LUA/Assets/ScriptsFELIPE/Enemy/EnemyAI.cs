@@ -225,6 +225,6 @@ public class EnemyAI : MonoBehaviour
     private IEnumerator GameOverDelay()
     {
     yield return new WaitForSeconds(1.5f);
-    SceneManager.LoadScene("Menu");
+    SceneManager.LoadScene("0");
     }
 }
