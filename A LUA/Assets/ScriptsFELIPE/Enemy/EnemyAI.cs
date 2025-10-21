@@ -1,135 +1,230 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
-    [Header("IA Follow Navegation")]
-    public float minDistanceToFollow = 1.2f;
-    public float minDistanceToPoint = 1.0f;
-    public float timeToStartNavegation = 3.0f;
-    public float speedOfNavegation = 1.0f;
-    public float speedOfFollow = 3.0f;
+    [Header("Som de Pulso")]
+    public AudioSource pulseAudio;
+    public float pulseMaxVolume = 1f;   
+    public float pulseMinVolume = 0.2f;
+    public float pulseSpeed = 6f; // velocidade do pulso
 
-    [Header("IA Vision")]
-    public Transform eyes;
-    public float visionRadius = 10f;
-    public float visionAgle = 45f;
-    public float timeOfNavegation;
+    [Header("Patrulha")]
+    public float minDistanceToPoint = 1f;
+    public float idleTime = 3f;
+    public float speedOfNavegation = 1f;
     public GameObject[] navegationsPoints;
 
-    private float timerNav;
-    private int pointIndex;
-    public bool canSeePlayer = false;
+    [Header("Follow Player")]
+    public float speedOfFollow = 3f;
+    public Transform eyes;
+    public float visionRadius = 10f;
+    public float visionAngle = 45f;
 
+    [Header("Vinheta / Game Over")]
+    public Image screenFade;
+    public float fadeSpeed = 0.5f;
+    public float fadeMaxDistance = 10f;
+    public float gameOverTime = 5f;
+    private bool gameOverTriggered = false;
+    private float fadeTimer = 0f;
+    public float maxDistance = 10f;
+
+    [Header("Sons")]
+    public AudioSource sinisterAudio;
+    public float maxSinisterVolume = 1f;
+    public float minSinisterVolume = 0f;
+    public float sinisterMaxDistance = 15f;
+    public AudioSource alertAudio;
+    public float alertCooldown = 3600f;
+    private float lastAlertTime = -9999f;
+
+    private NavMeshAgent navMesh;
     private Animator anim;
     private Transform target;
-    private NavMeshAgent navMesh;
-
+    private int pointIndex;
+    private bool isIdling = false;
+    private bool canSeePlayer = false;
 
     void Start()
     {
-        anim = GetComponent <Animator>();
+        anim = GetComponent<Animator>();
         navMesh = GetComponent<NavMeshAgent>();
-        target = GameObject.FindGameObjectWithTag("Player") . transform;
+        navMesh.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+        target = GameObject.FindGameObjectWithTag("Player")?.transform;
         navegationsPoints = GameObject.FindGameObjectsWithTag("NavegationsPoint");
         pointIndex = GetRandomPointIndex();
+
+        if (sinisterAudio != null)
+        {
+            sinisterAudio.loop = true;
+            sinisterAudio.Play();
+        }
     }
 
     void Update()
     {
-        timerNav = Mathf.Clamp(timerNav -= Time.deltaTime, 0, timeOfNavegation);
-        canSeePlayer = CanSeePlayer();
+        if (gameOverTriggered) return;
 
-        if(canSeePlayer || timerNav > 0)
-           Follow();
-        else
-            Navegation();   
+    canSeePlayer = CanSeePlayer();
+
+    UpdateSinisterVolume();
+    CheckAlertSound();
+    UpdateScreenFade();
+
+        if (canSeePlayer)
+        {
+            // Persegue o player
+            if (isIdling) StopAllCoroutines();
+            isIdling = false;
+
+            navMesh.isStopped = false;
+            navMesh.speed = speedOfFollow;
+            navMesh.SetDestination(target.position);
+
+            anim.SetBool("Follow", true);
+            anim.SetBool("Navegation", false);
+        }
+            else
+        {
+            // Se estava perseguindo, reinicie a patrulha
+            anim.SetBool("Follow", false);
+
+            // Se não está idling e não está indo para o ponto, comece a patrulha
+            if (!isIdling && !navMesh.pathPending && navMesh.remainingDistance < 0.1f)
+            Navegation();
+        }
     }
+
 
     private bool CanSeePlayer()
     {
-        if(target == null)
-        return false;
-
-      var directionToPlayer = (target.position - eyes.position).normalized;
-
-      if(Vector3.Angle(eyes.forward, directionToPlayer) < visionAgle / 2f)
-      {
-            RaycastHit hit;
-            if(Physics.Raycast(eyes.position, directionToPlayer, out hit,visionRadius))
+        if (target == null) return false;
+        Vector3 dir = (target.position - eyes.position).normalized;
+        if (Vector3.Angle(eyes.forward, dir) < visionAngle / 2f)
+        {
+            if (Physics.Raycast(eyes.position, dir, out RaycastHit hit, visionRadius))
             {
-                if(hit.collider.CompareTag("Player"))
-                {
-                    timerNav = timeOfNavegation;
+                if (hit.collider.CompareTag("Player"))
                     return true;
-                }
             }
         }
-        return false;  
-    } 
-    
+        return false;
+    }
 
     private void Navegation()
     {
-        anim.SetBool("Follow", false);
-        navMesh.speed = speedOfNavegation;
+        if (navegationsPoints.Length == 0) return;
 
-        if(navMesh.enabled && Vector3.Distance(transform.position, navegationsPoints[pointIndex]. transform.position) > minDistanceToPoint)
+        if (Vector3.Distance(transform.position, navegationsPoints[pointIndex].transform.position) > minDistanceToPoint)
         {
             anim.SetBool("Navegation", true);
-            navMesh.SetDestination(navegationsPoints[pointIndex]. transform.position);
+            navMesh.isStopped = false;
+            navMesh.speed = speedOfNavegation;
+            navMesh.SetDestination(navegationsPoints[pointIndex].transform.position);
         }
         else
         {
-            navMesh.enabled = false;
-            anim.SetBool("Navegation", false);
-
-            pointIndex = GetRandomPointIndex();
-
-            StartCoroutine ("StartNavegation");
-
+            StartCoroutine(IdleAtPoint());
         }
     }
-    private void Follow()
+
+    private IEnumerator IdleAtPoint()
     {
-        navMesh.speed = speedOfFollow;
-
-        if(Vector3.Distance(transform.position, target.position) > minDistanceToFollow)
-        {
-            anim.SetBool("Follow", true);
-            navMesh.enabled = true;
-            navMesh.SetDestination(target.position);
-        }
-        else
-        {
-            var lookPos = new Vector3(target.position.x, 0, target.position.z);
-            transform.LookAt(lookPos);
-
-            navMesh.enabled = false;
-            anim.SetBool("Follow", false);
-        }
+        isIdling = true;
+        anim.SetBool("Navegation", false);
+        navMesh.isStopped = true;
+        yield return new WaitForSeconds(idleTime);
+        pointIndex = GetRandomPointIndex();
+        anim.SetBool("Navegation", true);
+        navMesh.isStopped = false;
+        navMesh.SetDestination(navegationsPoints[pointIndex].transform.position);
+        isIdling = false;
     }
+
     private int GetRandomPointIndex()
     {
-        var i = UnityEngine.Random.Range(0, (navegationsPoints.Length - 1));
-
-        if(pointIndex == i)
-           return GetRandomPointIndex();
-
-        var enemys = GameObject.FindGameObjectsWithTag("Enemy");
-
-        foreach (GameObject enemy in enemys)
-        {
-            if(enemy.GetComponent<EnemyAI>().pointIndex == i)
-               return GetRandomPointIndex();
-        }
-        return i;   
+        if (navegationsPoints == null || navegationsPoints.Length == 0) return 0;
+        if (navegationsPoints.Length == 1) return 0;
+        int i = Random.Range(0, navegationsPoints.Length);
+        if (i == pointIndex) i = (i + 1) % navegationsPoints.Length;
+        return i;
     }
-    private IEnumerator StartNavegation()
+
+    private void UpdateSinisterVolume()
     {
-        yield return new WaitForSeconds(timeToStartNavegation);
-        navMesh.enabled = true;
+        if (target == null || sinisterAudio == null) return;
+        float distance = Vector3.Distance(transform.position, target.position);
+        float volume = Mathf.Lerp(maxSinisterVolume, minSinisterVolume, distance / sinisterMaxDistance);
+        sinisterAudio.volume = Mathf.Clamp(volume, minSinisterVolume, maxSinisterVolume);
+    }
+
+    private void CheckAlertSound()
+    {
+        if (target == null || alertAudio == null) return;
+        if (canSeePlayer && Time.time - lastAlertTime >= alertCooldown)
+        {
+            alertAudio.Play();
+            lastAlertTime = Time.time;
+        }
+    }
+
+    private void UpdateScreenFade()
+    {
+        if (screenFade == null || target == null) return;
+
+        float distance = Vector3.Distance(transform.position, target.position);
+
+        float t = Mathf.Clamp01(distance / maxDistance);
+
+        float cutoffBase = Mathf.Lerp(1f, 0f, 1f - t);
+
+        cutoffBase = Mathf.SmoothStep(1f, 0f, 1f - t);
+
+        float pulse = 0f;
+
+        if (cutoffBase < 0.4f)
+        {
+            pulse = Mathf.Sin(Time.time * pulseSpeed) * 0.05f * (1f - cutoffBase * 2f);
+
+            // Som pulsante
+            if (pulseAudio != null && !pulseAudio.isPlaying)
+            pulseAudio.Play();
+
+            if (pulseAudio != null)
+            {
+                // Volume proporcional à proximidade
+                float vol = Mathf.Lerp(pulseMinVolume, pulseMaxVolume, 1f - cutoffBase);
+                pulseAudio.volume = vol;
+            }
+        }
+        else
+        {
+            if (pulseAudio != null && pulseAudio.isPlaying)
+                pulseAudio.Stop();
+        }
+
+        float finalCutoff = Mathf.Clamp01(cutoffBase + pulse);
+
+        // Aplica no material
+        Material mat = screenFade.material;
+            if (mat != null && mat.HasProperty("_Cutoff"))
+                mat.SetFloat("_Cutoff", finalCutoff);
+
+        // Game Over quando a tela fecha completamente
+            if (finalCutoff <= 0.05f && !gameOverTriggered)
+        {
+        gameOverTriggered = true;
+        StartCoroutine(GameOverDelay());
+        }
+    }
+
+    private IEnumerator GameOverDelay()
+    {
+    yield return new WaitForSeconds(1.5f);
+    SceneManager.LoadScene("Menu");
     }
 }
-
