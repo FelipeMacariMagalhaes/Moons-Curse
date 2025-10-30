@@ -1,34 +1,76 @@
 using UnityEngine;
+using System.Collections;
+using UnityEngine.UI;
+using TMPro;
 
 public class ScriptSkyBox : MonoBehaviour
 {
+    // Sky materials
     public Material skyDay;
     public Material skySunset;
     public Material skyNight;
 
+    // UI
+    public Image fadeImage;
+    public TextMeshProUGUI notificationText;
+
+    // Lights & orbits
     public Light sun;
     public Light moon;
-
     public Transform sunOrbit;
     public Transform moonOrbit;
+
+    // Audio
+    public AudioSource audioSource;
+    public AudioClip dayToSunsetClip;
+    public AudioClip sunsetToNightClip;
+    public AudioClip nightToDayClip;
+
+    // Cycle settings
+    public float cycleDuration = 180f;
+    public float fadeDuration = 3f;
+
+    // Enemy (opcional)
+    public GameObject enemyPrefab;
+    public Transform enemySpawnPoint;
+    private GameObject currentEnemy;
+
+    [HideInInspector] public bool estaDeNoite = false;
 
     [Range(0, 24)] public float timeOfDay = 12f;
     public float daySpeed = 1f;
 
+    // Gradients / curves
     private Gradient sunColor;
     private Gradient moonColor;
     private Gradient ambientColor;
     private AnimationCurve sunIntensity;
     private AnimationCurve moonIntensity;
 
-    void Awake()
+    private void Awake()
     {
         CreateGradients();
         CreateCurves();
     }
 
-    void Update()
+    private void Start()
     {
+        if (fadeImage != null)
+        {
+            // garante que comece transparente
+            fadeImage.canvasRenderer.SetAlpha(0f);
+        }
+        if (notificationText != null)
+        {
+            notificationText.canvasRenderer.SetAlpha(0f);
+        }
+
+        StartCoroutine(CycleRoutine());
+    }
+
+    private void Update()
+    {
+        // Atualiza hora do dia e iluminação
         timeOfDay = (timeOfDay + Time.deltaTime * daySpeed) % 24f;
         float t = timeOfDay / 24f;
 
@@ -38,6 +80,109 @@ public class ScriptSkyBox : MonoBehaviour
         AutoSwitchLights();
     }
 
+    // --- corrotina que roda o ciclo (dia -> por-do-sol -> noite -> dia ...) ---
+    IEnumerator CycleRoutine()
+    {
+        while (true)
+        {
+            // Dia -> Sunset
+            yield return StartCoroutine(SkyPhase(skyDay, "O dia está terminando...", dayToSunsetClip, false, false));
+
+            // Sunset -> Night
+            yield return StartCoroutine(SkyPhase(skySunset, "A noite está chegando...", sunsetToNightClip, true, true));
+
+            // Night -> Day
+            yield return StartCoroutine(SkyPhase(skyNight, "O dia está voltando...", nightToDayClip, false, false));
+        }
+    }
+
+    IEnumerator SkyPhase(Material skyMat, string noticeText, AudioClip transitionSound, bool nextIsNight, bool spawnEnemy)
+    {
+        // Define skybox da fase
+        if (skyMat != null)
+        {
+            RenderSettings.skybox = skyMat;
+            DynamicGI.UpdateEnvironment();
+        }
+
+        // Espera grande parte do ciclo (ajustável). Aqui distribuímos 60s para notificações/transição
+        float waitBeforeNotifying = Mathf.Max(0, cycleDuration - 60f);
+        yield return new WaitForSeconds(waitBeforeNotifying);
+
+        // Notificação breve
+        if (notificationText != null)
+        {
+            notificationText.text = noticeText;
+            notificationText.CrossFadeAlpha(1f, 1f, false);
+        }
+
+        yield return new WaitForSeconds(5f);
+
+        if (notificationText != null)
+            notificationText.CrossFadeAlpha(0f, 2f, false);
+
+        yield return new WaitForSeconds(55f);
+
+        // Fade to black (ou para a cor da image)
+        yield return StartCoroutine(Fade(true));
+
+        // Toca som de transição
+        if (audioSource && transitionSound)
+            audioSource.PlayOneShot(transitionSound);
+
+        // espera o fim do fade
+        yield return new WaitForSeconds(fadeDuration);
+
+        estaDeNoite = nextIsNight;
+
+        HandleEnemy(spawnEnemy);
+
+        // Fade in (volta)
+        yield return StartCoroutine(Fade(false));
+    }
+
+    IEnumerator Fade(bool fadeOut)
+    {
+        if (fadeImage == null)
+        {
+            yield break;
+        }
+
+        // certificar alpha inicial
+        float startAlpha = fadeImage.canvasRenderer.GetAlpha();
+        float endAlpha = fadeOut ? 1f : 0f;
+        float timer = 0f;
+
+        while (timer < fadeDuration)
+        {
+            timer += Time.deltaTime;
+            float a = Mathf.Lerp(startAlpha, endAlpha, timer / fadeDuration);
+            fadeImage.canvasRenderer.SetAlpha(a);
+            yield return null;
+        }
+        fadeImage.canvasRenderer.SetAlpha(endAlpha);
+    }
+
+    void HandleEnemy(bool shouldSpawn)
+    {
+        if (shouldSpawn)
+        {
+            if (enemyPrefab != null && enemySpawnPoint != null && currentEnemy == null)
+            {
+                currentEnemy = Instantiate(enemyPrefab, enemySpawnPoint.position, enemySpawnPoint.rotation);
+            }
+        }
+        else
+        {
+            if (currentEnemy != null)
+            {
+                Destroy(currentEnemy);
+                currentEnemy = null;
+            }
+        }
+    }
+
+    // --- Gradientes e curvas de iluminação ---
     void CreateGradients()
     {
         sunColor = new Gradient();
@@ -50,7 +195,7 @@ public class ScriptSkyBox : MonoBehaviour
                 new GradientColorKey(new Color(0.05f,0.07f,0.15f), 1f)
             },
             new GradientAlphaKey[] {
-                new GradientAlphaKey(1,0f), new GradientAlphaKey(1,1f)
+                new GradientAlphaKey(1f,0f), new GradientAlphaKey(1f,1f)
             }
         );
 
@@ -62,7 +207,7 @@ public class ScriptSkyBox : MonoBehaviour
                 new GradientColorKey(new Color(0.4f,0.45f,0.6f), 1f)
             },
             new GradientAlphaKey[] {
-                new GradientAlphaKey(1,0f), new GradientAlphaKey(1,1f)
+                new GradientAlphaKey(1f,0f), new GradientAlphaKey(1f,1f)
             }
         );
 
@@ -76,7 +221,7 @@ public class ScriptSkyBox : MonoBehaviour
                 new GradientColorKey(new Color(0.05f,0.07f,0.12f), 1f)
             },
             new GradientAlphaKey[] {
-                new GradientAlphaKey(1,0f), new GradientAlphaKey(1,1f)
+                new GradientAlphaKey(1f,0f), new GradientAlphaKey(1f,1f)
             }
         );
     }
@@ -99,13 +244,14 @@ public class ScriptSkyBox : MonoBehaviour
         );
     }
 
+    // --- Updates de iluminação, skybox e órbita ---
     void UpdateLighting(float t)
     {
-        sun.color = sunColor.Evaluate(t);
-        moon.color = moonColor.Evaluate(t);
-        RenderSettings.ambientLight = ambientColor.Evaluate(t);
-        sun.intensity = sunIntensity.Evaluate(t);
-        moon.intensity = moonIntensity.Evaluate(t);
+        if (sun != null && sunColor != null) sun.color = sunColor.Evaluate(t);
+        if (moon != null && moonColor != null) moon.color = moonColor.Evaluate(t);
+        if (ambientColor != null) RenderSettings.ambientLight = ambientColor.Evaluate(t);
+        if (sun != null && sunIntensity != null) sun.intensity = sunIntensity.Evaluate(t);
+        if (moon != null && moonIntensity != null) moon.intensity = moonIntensity.Evaluate(t);
     }
 
     void UpdateSkybox(float t)
