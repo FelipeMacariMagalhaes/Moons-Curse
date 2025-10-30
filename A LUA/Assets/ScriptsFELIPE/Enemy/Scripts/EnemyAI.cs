@@ -6,11 +6,16 @@ using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
+    [Header("Configuração do Dia e Noite")]
+    public ScriptSkyBox cicloDiaNoite; // arrasta o objeto do script DiaENoite aqui
+
+    private bool ativo = false;
+
     [Header("Som de Pulso")]
     public AudioSource pulseAudio;
-    public float pulseMaxVolume = 1f;   
+    public float pulseMaxVolume = 1f;
     public float pulseMinVolume = 0.2f;
-    public float pulseSpeed = 6f; // velocidade do pulso
+    public float pulseSpeed = 6f;
 
     [Header("Patrulha")]
     public float minDistanceToPoint = 1f;
@@ -63,21 +68,37 @@ public class EnemyAI : MonoBehaviour
             sinisterAudio.loop = true;
             sinisterAudio.Play();
         }
+
+        // desativa o inimigo até a noite começar
+        SetAtivo(false);
     }
 
     void Update()
     {
-        if (gameOverTriggered) return;
+        // verifica se é noite ou dia
+        if (cicloDiaNoite != null)
+        {
+            if (cicloDiaNoite.estaDeNoite && !ativo)
+            {
+                SetAtivo(true); // ativa o inimigo quando escurece
+            }
+            else if (!cicloDiaNoite.estaDeNoite && ativo)
+            {
+                SetAtivo(false); // desativa de manhã
+                return;
+            }
+        }
 
-    canSeePlayer = CanSeePlayer();
+        if (!ativo || gameOverTriggered) return;
 
-    UpdateSinisterVolume();
-    CheckAlertSound();
-    UpdateScreenFade();
+        canSeePlayer = CanSeePlayer();
+
+        UpdateSinisterVolume();
+        CheckAlertSound();
+        UpdateScreenFade();
 
         if (canSeePlayer)
         {
-            // Persegue o player
             if (isIdling) StopAllCoroutines();
             isIdling = false;
 
@@ -88,17 +109,27 @@ public class EnemyAI : MonoBehaviour
             anim.SetBool("Follow", true);
             anim.SetBool("Navegation", false);
         }
-            else
+        else
         {
-            // Se estava perseguindo, reinicie a patrulha
             anim.SetBool("Follow", false);
-
-            // Se não está idling e não está indo para o ponto, comece a patrulha
             if (!isIdling && !navMesh.pathPending && navMesh.remainingDistance < 0.1f)
-            Navegation();
+                Navegation();
         }
     }
 
+    private void SetAtivo(bool valor)
+    {
+        ativo = valor;
+        gameObject.SetActive(valor);
+        if (valor)
+        {
+            if (navMesh != null) navMesh.enabled = true;
+        }
+        else
+        {
+            if (navMesh != null) navMesh.enabled = false;
+        }
+    }
 
     private bool CanSeePlayer()
     {
@@ -190,13 +221,11 @@ public class EnemyAI : MonoBehaviour
         {
             pulse = Mathf.Sin(Time.time * pulseSpeed) * 0.05f * (1f - cutoffBase * 2f);
 
-            // Som pulsante
             if (pulseAudio != null && !pulseAudio.isPlaying)
-            pulseAudio.Play();
+                pulseAudio.Play();
 
             if (pulseAudio != null)
             {
-                // Volume proporcional à proximidade
                 float vol = Mathf.Lerp(pulseMinVolume, pulseMaxVolume, 1f - cutoffBase);
                 pulseAudio.volume = vol;
             }
@@ -209,22 +238,20 @@ public class EnemyAI : MonoBehaviour
 
         float finalCutoff = Mathf.Clamp01(cutoffBase + pulse);
 
-        // Aplica no material
         Material mat = screenFade.material;
-            if (mat != null && mat.HasProperty("_Cutoff"))
-                mat.SetFloat("_Cutoff", finalCutoff);
+        if (mat != null && mat.HasProperty("_Cutoff"))
+            mat.SetFloat("_Cutoff", finalCutoff);
 
-        // Game Over quando a tela fecha completamente
-            if (finalCutoff <= 0.05f && !gameOverTriggered)
+        if (finalCutoff <= 0.05f && !gameOverTriggered)
         {
-        gameOverTriggered = true;
-        StartCoroutine(GameOverDelay());
+            gameOverTriggered = true;
+            StartCoroutine(GameOverDelay());
         }
     }
 
     private IEnumerator GameOverDelay()
     {
-    yield return new WaitForSeconds(1.5f);
-    SceneManager.LoadScene("0");
+        yield return new WaitForSeconds(1.5f);
+        SceneManager.LoadScene("0");
     }
 }
