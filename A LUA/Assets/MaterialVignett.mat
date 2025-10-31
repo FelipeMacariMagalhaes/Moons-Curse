@@ -104,7 +104,15 @@ Material:
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
     - _Cull: 2
+<<<<<<< HEAD
     - _Cutoff: 0.044004247
+=======
+<<<<<<< HEAD
+    - _Cutoff: 0.049866643
+=======
+    - _Cutoff: 0.04464726
+>>>>>>> d1387a46fad2b7bf3601c67712a11de7811b1072
+>>>>>>> 01e5f824d532ddc08af158f40e8ed6cd917275ee
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
