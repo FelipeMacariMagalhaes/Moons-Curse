@@ -15,11 +15,11 @@ public class EnemyAI : MonoBehaviour
     [Header("Patrulha")]
     public float minDistanceToPoint = 1f;
     public float idleTime = 3f;
-    public float speedOfNavegation = 1f;
+    public float speedOfNavegation = 6f;
     public GameObject[] navegationsPoints;
 
     [Header("Follow Player")]
-    public float speedOfFollow = 3f;
+    public float speedOfFollow = 6f;
     public Transform eyes;
     public float visionRadius = 10f;
     public float visionAngle = 45f;
