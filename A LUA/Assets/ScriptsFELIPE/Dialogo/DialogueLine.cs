@@ -14,5 +14,5 @@ public class DialogueLine
 public class DialogueData : ScriptableObject
 {
     public DialogueLine[] lines;
-    public DialogueData nextDialogue;        
+    public DialogueData nextDialogue;        // opcional
 }
