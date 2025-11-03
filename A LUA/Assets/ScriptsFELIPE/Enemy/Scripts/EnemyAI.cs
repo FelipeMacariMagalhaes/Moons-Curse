@@ -3,10 +3,14 @@ using UnityEngine.AI;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
-using TMPro;
 
 public class EnemyAI : MonoBehaviour
 {
+    [Header("Configuração do Dia e Noite")]
+    public ScriptSkyBox cicloDiaNoite; // arrasta o objeto do script DiaENoite aqui
+
+    private bool ativo = false;
+
     [Header("Som de Pulso")]
     public AudioSource pulseAudio;
     public float pulseMaxVolume = 1f;
@@ -16,11 +20,11 @@ public class EnemyAI : MonoBehaviour
     [Header("Patrulha")]
     public float minDistanceToPoint = 1f;
     public float idleTime = 3f;
-    public float speedOfNavegation = 1f;
+    public float speedOfNavegation = 6f;
     public GameObject[] navegationsPoints;
 
     [Header("Follow Player")]
-    public float speedOfFollow = 3f;
+    public float speedOfFollow = 6f;
     public Transform eyes;
     public float visionRadius = 10f;
     public float visionAngle = 45f;
@@ -39,13 +43,9 @@ public class EnemyAI : MonoBehaviour
     public float maxSinisterVolume = 1f;
     public float minSinisterVolume = 0f;
     public float sinisterMaxDistance = 15f;
-
-    [Header("Som de Alerta (Risada)")]
-    public AudioSource alertAudio; // som da risada
-    private bool alertPlayed = false;
-
-    [Header("Texto de Suspense")]
-    public TextMeshProUGUI suspenseText;
+    public AudioSource alertAudio;
+    public float alertCooldown = 3600f;
+    private float lastAlertTime = -9999f;
 
     private NavMeshAgent navMesh;
     private Animator anim;
@@ -53,14 +53,12 @@ public class EnemyAI : MonoBehaviour
     private int pointIndex;
     private bool isIdling = false;
     private bool canSeePlayer = false;
-    private bool ativo = false;
 
     void Start()
     {
         anim = GetComponent<Animator>();
         navMesh = GetComponent<NavMeshAgent>();
         navMesh.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
-
         target = GameObject.FindGameObjectWithTag("Player")?.transform;
         navegationsPoints = GameObject.FindGameObjectsWithTag("NavegationsPoint");
         pointIndex = GetRandomPointIndex();
@@ -71,21 +69,39 @@ public class EnemyAI : MonoBehaviour
             sinisterAudio.Play();
         }
 
-        gameObject.SetActive(false); // começa desativado
+        // desativa o inimigo até a noite começar
+        SetAtivo(false);
     }
 
     void Update()
     {
+        // verifica se é noite ou dia
+        if (cicloDiaNoite != null)
+        {
+            if (cicloDiaNoite.estaDeNoite && !ativo)
+            {
+                SetAtivo(true); // ativa o inimigo quando escurece
+            }
+            else if (!cicloDiaNoite.estaDeNoite && ativo)
+            {
+                SetAtivo(false); // desativa de manhã
+                return;
+            }
+        }
+
         if (!ativo || gameOverTriggered) return;
 
         canSeePlayer = CanSeePlayer();
 
         UpdateSinisterVolume();
+        CheckAlertSound();
         UpdateScreenFade();
 
         if (canSeePlayer)
         {
-            // persegue player
+            if (isIdling) StopAllCoroutines();
+            isIdling = false;
+
             navMesh.isStopped = false;
             navMesh.speed = speedOfFollow;
             navMesh.SetDestination(target.position);
@@ -95,54 +111,30 @@ public class EnemyAI : MonoBehaviour
         }
         else
         {
-            // volta a patrulhar
             anim.SetBool("Follow", false);
             if (!isIdling && !navMesh.pathPending && navMesh.remainingDistance < 0.1f)
                 Navegation();
         }
     }
 
-    // --- Ativação noturna ---
-    public void AtivarInimigo()
+    private void SetAtivo(bool valor)
     {
-        gameObject.SetActive(true);
-        ativo = true;
-        alertPlayed = false;
-
-        navMesh.isStopped = false;
-        anim.SetBool("Follow", false);
-        anim.SetBool("Navegation", true);
-
-        TocarRisada();
-    }
-
-    private void TocarRisada()
-    {
-        if (alertAudio != null && !alertPlayed)
+        ativo = valor;
+        gameObject.SetActive(valor);
+        if (valor)
         {
-            alertAudio.enabled = true;
-            alertAudio.PlayOneShot(alertAudio.clip);
-            alertPlayed = true;
-
-            if (suspenseText != null)
-                StartCoroutine(MostrarTextoSuspense());
+            if (navMesh != null) navMesh.enabled = true;
+        }
+        else
+        {
+            if (navMesh != null) navMesh.enabled = false;
         }
     }
 
-    private IEnumerator MostrarTextoSuspense()
-    {
-        suspenseText.text = "Que barulho é esse?";
-        suspenseText.CrossFadeAlpha(1f, 1f, false);
-        yield return new WaitForSeconds(3f);
-        suspenseText.CrossFadeAlpha(0f, 2f, false);
-    }
-
-    // --- Visão do inimigo ---
     private bool CanSeePlayer()
     {
         if (target == null) return false;
         Vector3 dir = (target.position - eyes.position).normalized;
-
         if (Vector3.Angle(eyes.forward, dir) < visionAngle / 2f)
         {
             if (Physics.Raycast(eyes.position, dir, out RaycastHit hit, visionRadius))
@@ -154,7 +146,6 @@ public class EnemyAI : MonoBehaviour
         return false;
     }
 
-    // --- Patrulha ---
     private void Navegation()
     {
         if (navegationsPoints.Length == 0) return;
@@ -188,12 +179,12 @@ public class EnemyAI : MonoBehaviour
     private int GetRandomPointIndex()
     {
         if (navegationsPoints == null || navegationsPoints.Length == 0) return 0;
+        if (navegationsPoints.Length == 1) return 0;
         int i = Random.Range(0, navegationsPoints.Length);
         if (i == pointIndex) i = (i + 1) % navegationsPoints.Length;
         return i;
     }
 
-    // --- Áudio ambiente sinistro ---
     private void UpdateSinisterVolume()
     {
         if (target == null || sinisterAudio == null) return;
@@ -202,14 +193,28 @@ public class EnemyAI : MonoBehaviour
         sinisterAudio.volume = Mathf.Clamp(volume, minSinisterVolume, maxSinisterVolume);
     }
 
-    // --- Fade e Game Over ---
+    private void CheckAlertSound()
+    {
+        if (target == null || alertAudio == null) return;
+        if (canSeePlayer && Time.time - lastAlertTime >= alertCooldown)
+        {
+            alertAudio.Play();
+            lastAlertTime = Time.time;
+        }
+    }
+
     private void UpdateScreenFade()
     {
         if (screenFade == null || target == null) return;
 
         float distance = Vector3.Distance(transform.position, target.position);
+
         float t = Mathf.Clamp01(distance / maxDistance);
-        float cutoffBase = Mathf.SmoothStep(1f, 0f, 1f - t);
+
+        float cutoffBase = Mathf.Lerp(1f, 0f, 1f - t);
+
+        cutoffBase = Mathf.SmoothStep(1f, 0f, 1f - t);
+
         float pulse = 0f;
 
         if (cutoffBase < 0.4f)
@@ -220,7 +225,10 @@ public class EnemyAI : MonoBehaviour
                 pulseAudio.Play();
 
             if (pulseAudio != null)
-                pulseAudio.volume = Mathf.Lerp(pulseMinVolume, pulseMaxVolume, 1f - cutoffBase);
+            {
+                float vol = Mathf.Lerp(pulseMinVolume, pulseMaxVolume, 1f - cutoffBase);
+                pulseAudio.volume = vol;
+            }
         }
         else
         {
@@ -229,6 +237,7 @@ public class EnemyAI : MonoBehaviour
         }
 
         float finalCutoff = Mathf.Clamp01(cutoffBase + pulse);
+
         Material mat = screenFade.material;
         if (mat != null && mat.HasProperty("_Cutoff"))
             mat.SetFloat("_Cutoff", finalCutoff);
@@ -243,6 +252,6 @@ public class EnemyAI : MonoBehaviour
     private IEnumerator GameOverDelay()
     {
         yield return new WaitForSeconds(1.5f);
-        SceneManager.LoadScene("Menu");
+        SceneManager.LoadScene("0");
     }
 }
