@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class PlayController : MonoBehaviour
 {
+    public static PlayController Instance;
    [Header("Referências de controle do Player")]
     public MonoBehaviour firstPersonController;
 
