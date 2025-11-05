@@ -7,6 +7,11 @@ using TMPro;
 
 public class EnemyAI : MonoBehaviour
 {
+    [Header("Configuração do Dia e Noite")]
+    public ScriptSkyBox cicloDiaNoite; // arrasta o objeto do script DiaENoite aqui
+
+    private bool ativo = false;
+
     [Header("Som de Pulso")]
     public AudioSource pulseAudio;
     public float pulseMaxVolume = 1f;
@@ -53,7 +58,7 @@ public class EnemyAI : MonoBehaviour
     private int pointIndex;
     private bool isIdling = false;
     private bool canSeePlayer = false;
-    private bool ativo = false;
+    private bool Active = false;
 
     void Start()
     {
