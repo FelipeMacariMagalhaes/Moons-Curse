@@ -3,44 +3,92 @@ using UnityEngine.Playables;
 using System.Collections;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using TMPro;
 public class FadeScreenHouse : MonoBehaviour
 {
-   public Image fadeImage; // arraste o FadeImage aqui
-    public float fadeDuration = 2f;
+    public static FadeScreenHouse Instance;
+     public Image fadeImage; // arraste uma Image preta no Canvas
+    public float fadeDuration = 1.5f;
+    public TMP_Text fadeText;
 
     private void Awake()
     {
-        if (fadeImage != null)
+        Instance = this;
+        fadeImage.gameObject.SetActive(true);
+        fadeImage.color = new Color(0, 0, 0, 0);
+        fadeText.color = new Color(1, 1, 1, 0);
+    }
+
+    public IEnumerator PlayFinalSequence()
+    {
+        // Fade in total
+        yield return StartCoroutine(FadePanel(0, 1, 2f));
+
+        // Mostra texto 1
+        yield return StartCoroutine(ShowText("O telefone é o único que posso confiar.", 2f));
+        yield return new WaitForSeconds(1.5f);
+        yield return StartCoroutine(HideText(1f));
+
+        // Mostra texto 2
+        yield return StartCoroutine(ShowText("Por enquanto...", 2f));
+        yield return new WaitForSeconds(2f);
+        yield return StartCoroutine(HideText(1.5f));
+
+        // Fade out pra próxima cena
+        yield return new WaitForSeconds(1f);
+        SceneManager.LoadScene("NextScene"); // troca de cena aqui
+    }
+
+    IEnumerator FadePanel(float start, float end, float duration)
+    {
+        float t = 0;
+        while (t < duration)
         {
-            // Garante que o fade comece transparente
-            Color c = fadeImage.color;
-            c.a = 0;
-            fadeImage.color = c;
+            t += Time.deltaTime;
+            fadeImage.color = new Color(0, 0, 0, Mathf.Lerp(start, end, t / duration));
+            yield return null;
         }
     }
 
+    IEnumerator ShowText(string text, float fadeTime)
+    {
+        fadeText.text = text;
+        float t = 0;
+        while (t < fadeTime)
+        {
+            t += Time.deltaTime;
+            fadeText.color = new Color(1, 1, 1, Mathf.Lerp(0, 1, t / fadeTime));
+            yield return null;
+        }
+    }
+
+    IEnumerator HideText(float fadeTime)
+    {
+        float t = 0;
+        while (t < fadeTime)
+        {
+            t += Time.deltaTime;
+            fadeText.color = new Color(1, 1, 1, Mathf.Lerp(1, 0, t / fadeTime));
+            yield return null;
+        }
+    }
     public void FadeOutAndChangeScene(string sceneName)
     {
         StartCoroutine(FadeOutRoutine(sceneName));
     }
-
-    private IEnumerator FadeOutRoutine(string sceneName)
+     private IEnumerator FadeOutRoutine(string sceneName)
     {
-        float timer = 0f;
-        Color c = fadeImage.color;
+        float t = 0f;
+        Color color = fadeImage.color;
 
-        while (timer < fadeDuration)
+        while (t < fadeDuration)
         {
-            timer += Time.deltaTime;
-            c.a = Mathf.Lerp(0, 1, timer / fadeDuration);
-            fadeImage.color = c;
+            t += Time.deltaTime;
+            color.a = Mathf.Lerp(0, 1, t / fadeDuration);
+            fadeImage.color = color;
             yield return null;
         }
 
-        // Espera 1 seg antes de trocar
-        yield return new WaitForSeconds(0.5f);
         SceneManager.LoadScene(sceneName);
     }
 }
-
-

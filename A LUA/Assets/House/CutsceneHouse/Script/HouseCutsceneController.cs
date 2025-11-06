@@ -2,66 +2,56 @@ using UnityEngine;
 using UnityEngine.Playables;
 using Unity.Cinemachine;
 using System.Collections;
-
+using UnityEngine.SceneManagement;
 public class HouseCutsceneController : MonoBehaviour
 {
-      public static HouseCutsceneController Instance;
+ public static HouseCutsceneController Instance;
 
-    [Header("Câmeras Virtuais")]
-    public CinemachineVirtualCamera cmPlayer;
-    public CinemachineVirtualCamera cmPhone1;
-    public CinemachineVirtualCamera cmPhone2;
-    public CinemachineVirtualCamera cmWeapons;
-
-    [Header("Timelines")]
+    [Header("Referências")]
+    public CameraSwitch cameraSwitcher;
     public PlayableDirector cutscenePhone1;
     public PlayableDirector cutscenePhone2;
     public PlayableDirector cutsceneWeapons;
 
-    private void Awake() => Instance = this;
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     void Start()
     {
-        // começa no player
-        AtivarCamera(cmPlayer);
-        Invoke(nameof(PlayCutscene1), 1f);
+        cameraSwitcher.SetActiveCamera(cameraSwitcher.cmPlayer);
     }
 
-    void PlayCutscene1()
+    public void PlayPhone1Cutscene()
     {
-        AtivarCamera(cmPhone1);
-        cutscenePhone1.Play();
+        StartCoroutine(PlayCutsceneRoutine(cutscenePhone1, cameraSwitcher.cmPhone1));
     }
 
-    public void PlayCutscene2()
+    public void PlayPhone2Cutscene()
     {
-        AtivarCamera(cmPhone2);
-        cutscenePhone2.Play();
+        StartCoroutine(PlayCutsceneRoutine(cutscenePhone2, cameraSwitcher.cmPhone2));
     }
 
-    public void PlayCutscene3()
+    public void PlayWeaponsCutscene()
     {
-        AtivarCamera(cmWeapons);
-        cutsceneWeapons.Play();
+        StartCoroutine(PlayCutsceneRoutine(cutsceneWeapons, cameraSwitcher.cmWeapons, true));
     }
 
-    public void VoltarParaPlayer()
+    private IEnumerator PlayCutsceneRoutine(PlayableDirector director, CinemachineCamera cam, bool isLast = false)
     {
-        AtivarCamera(cmPlayer);
-    }
+        cameraSwitcher.SetActiveCamera(cam);
+        director.Play();
 
-    // Gerencia prioridades — o Brain troca automaticamente
-    void AtivarCamera(CinemachineVirtualCamera ativa)
-    {
-        CinemachineVirtualCamera[] todas = FindObjectsOfType<CinemachineVirtualCamera>();
-        foreach (var vcam in todas)
+        yield return new WaitWhile(() => director.state == PlayState.Playing);
+
+        if (isLast)
         {
-            if (vcam == ativa)
-                vcam.Priority = 20;
-            else
-                vcam.Priority = 0;
+            yield return StartCoroutine(FadeScreenHouse.Instance.PlayFinalSequence());
         }
-
-        Debug.Log($"[Cutscene] Ativando câmera: {ativa.name}");
+        else
+        {
+            cameraSwitcher.SetActiveCamera(cameraSwitcher.cmPlayer);
+        }
     }
 }
