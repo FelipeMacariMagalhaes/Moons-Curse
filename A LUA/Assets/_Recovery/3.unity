@@ -384,7 +384,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 60a1c789c82477649843eae553a61cff, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 0.205
+  m_Volume: 0.86
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -506,6 +506,7 @@ GameObject:
   m_Component:
   - component: {fileID: 518898131}
   - component: {fileID: 518898130}
+  - component: {fileID: 518898132}
   m_Layer: 0
   m_Name: AudioSorce
   m_TagString: Untagged
@@ -625,6 +626,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &518898132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 518898129}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 643594f8f11ff1540badfc42f51b74cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MusicaPersistente
 --- !u!1 &570846430
 GameObject:
   m_ObjectHideFlags: 0
@@ -1462,7 +1475,7 @@ RectTransform:
   m_Father: {fileID: 2027967845}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1969,7 +1982,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1550860740
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2295,7 +2308,7 @@ RectTransform:
   m_Father: {fileID: 2139813326}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3084,7 +3097,7 @@ RectTransform:
   m_Father: {fileID: 1555395160}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3159,7 +3172,7 @@ RectTransform:
   m_Father: {fileID: 214618988}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3213,6 +3226,7 @@ GameObject:
   - component: {fileID: 2079571029}
   - component: {fileID: 2079571028}
   - component: {fileID: 2079571031}
+  - component: {fileID: 2079571032}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -3338,6 +3352,20 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &2079571032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2079571027}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6179710439852345a70a0ab846e52ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraController2
+  opcoes: {fileID: 1550860741}
+  playerBody: {fileID: 0}
 --- !u!1 &2139813325
 GameObject:
   m_ObjectHideFlags: 0
