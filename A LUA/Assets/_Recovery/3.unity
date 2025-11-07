@@ -393,7 +393,7 @@ AudioSource:
   Priority: 128
   DopplerLevel: 1
   MinDistance: 1
-  MaxDistance: 500
+  MaxDistance: 497.456
   Pan2D: 0
   rolloffMode: 0
   BypassEffects: 0
@@ -3365,7 +3365,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController2
   opcoes: {fileID: 1550860741}
-  playerBody: {fileID: 0}
+  playerBody: {fileID: 2079571030}
 --- !u!1 &2139813325
 GameObject:
   m_ObjectHideFlags: 0
