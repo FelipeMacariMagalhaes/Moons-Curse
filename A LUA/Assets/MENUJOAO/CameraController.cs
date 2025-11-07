@@ -2,15 +2,20 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public OpcoesMenu opcoes; // arraste o script OpcoesMenu aqui
+    public Transform playerBody;
+    float rotX = 0f;
 
-    // Update is called once per frame
     void Update()
     {
-        
+        float mouseX = Input.GetAxis("Mouse X") * opcoes.GetSensibilidade();
+        float mouseY = Input.GetAxis("Mouse Y") * opcoes.GetSensibilidade();
+
+        rotX -= mouseY;
+        rotX = Mathf.Clamp(rotX, -90f, 90f);
+
+        transform.localRotation = Quaternion.Euler(rotX, 0f, 0f);
+        playerBody.Rotate(Vector3.up * mouseX);
     }
 }
+
