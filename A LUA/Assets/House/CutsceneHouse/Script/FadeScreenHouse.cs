@@ -7,9 +7,9 @@ using TMPro;
 public class FadeScreenHouse : MonoBehaviour
 {
     public static FadeScreenHouse Instance;
-     public Image fadeImage; // arraste uma Image preta no Canvas
+     public Image fadeImage;  
     public float fadeDuration = 1.5f;
-    public TMP_Text fadeText;
+    public TextMeshProUGUI fadeText;
 
     private void Awake()
     {
@@ -36,7 +36,7 @@ public class FadeScreenHouse : MonoBehaviour
 
         // Fade out pra próxima cena
         yield return new WaitForSeconds(1f);
-        SceneManager.LoadScene("NextScene"); // troca de cena aqui
+        SceneManager.LoadScene("NextScene"); 
     }
 
     IEnumerator FadePanel(float start, float end, float duration)
