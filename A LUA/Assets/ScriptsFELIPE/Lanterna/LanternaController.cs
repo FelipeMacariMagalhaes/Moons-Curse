@@ -1,62 +1,97 @@
 using UnityEngine;
 using TMPro;
+
 public class LanternaController : MonoBehaviour
 {
     private Light light;
-    public AudioSource Som;
-    
+    private AudioSource audioSource;
+
+    [Header("Sons")]
+    public AudioClip somLigar;
+    public AudioClip somDesligar;
+
+    [Header("UI")]
     public TextMeshProUGUI tmpBattery;
-    public float minSpotAngle = 5;
-    public float maxSpotAngle = 70;
-    public float multiplier = 5;
 
-    public float multiplierReduceBattery = 10;
+    [Header("Configuração da Luz")]
+    public float minSpotAngle = 5f;
+    public float maxSpotAngle = 70f;
+    public float multiplier = 5f;
 
-    private float batteryValue = 100;
-    
+    [Header("Bateria")]
+    public float multiplierReduceBattery = 10f;
+    private float batteryValue = 100f;
+
     void Start()
     {
-        light = GetComponentInChildren<Light>();
+        // Tenta achar automaticamente os componentes
+        if (light == null)
+            light = GetComponentInChildren<Light>();
+
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        // Mensagens de aviso no Console, se algo estiver faltando
+        if (light == null)
+            Debug.LogWarning(" Nenhum componente Light encontrado como filho de " + gameObject.name);
+        if (audioSource == null)
+            Debug.LogWarning("Nenhum AudioSource encontrado em " + gameObject.name);
+
+        SetUI();
     }
 
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.F))
-           TurnFlashLight();
+        // Clique esquerdo para ligar/desligar
+        if (Input.GetMouseButtonDown(0))
+            ToggleFlashlight();
 
-        if(light.enabled)
+        if (light != null && light.enabled)
         {
             Focar();
-            Reduce();
-        }   
-    }
-    void TurnFlashLight()
-    {
-        if(batteryValue != 0)
-             light.enabled = !light.enabled;
-        else
-            light.enabled = false;
-            
-        
+            ReduceBattery();
+        }
 
-           Som.Play();
+        SetUI();
     }
-    void Reduce()
+
+    void ToggleFlashlight()
     {
-        batteryValue = Mathf.Clamp(batteryValue -= multiplierReduceBattery * Time.deltaTime, 0, 100); 
+        if (batteryValue <= 0 || light == null)
+        {
+            if (light != null)
+                light.enabled = false;
+            return;
+        }
+
+        light.enabled = !light.enabled;
+
+        if (audioSource != null)
+            audioSource.PlayOneShot(light.enabled ? somLigar : somDesligar);
     }
+
+    void ReduceBattery()
+    {
+        batteryValue = Mathf.Clamp(batteryValue - multiplierReduceBattery * Time.deltaTime, 0, 100);
+
+        if (batteryValue <= 0 && light != null)
+            light.enabled = false;
+    }
+
     void Focar()
     {
-        light.spotAngle = Mathf.Clamp(light.spotAngle += Input.GetAxis("Mouse ScrollWheel") * multiplier, minSpotAngle, maxSpotAngle);
+        if (light == null) return;
+        light.spotAngle = Mathf.Clamp(light.spotAngle + Input.GetAxis("Mouse ScrollWheel") * multiplier, minSpotAngle, maxSpotAngle);
     }
+
     void SetUI()
     {
-        tmpBattery.text = batteryValue.ToString("N0");
+        if (tmpBattery != null)
+            tmpBattery.text = $"{batteryValue:N0}";
     }
-    
+
     public void AddBattery(float value)
     {
-        batteryValue = Mathf.Clamp(batteryValue += value, 0, 100);
+        batteryValue = Mathf.Clamp(batteryValue + value, 0, 100);
     }
-    
 }

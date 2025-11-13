@@ -2,17 +2,17 @@ using UnityEngine;
 
 public class LanternaFollow : MonoBehaviour
 {
-    public float speed;
+    public float speed = 10f;
     private Transform target;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
         target = Camera.main.transform;
     }
 
-    // Update is called once per frame
     void Update()
     {
+        if (target == null) return;
         transform.position = target.position;
         transform.rotation = Quaternion.Lerp(transform.rotation, target.rotation, speed * Time.deltaTime);
     }
