@@ -2,61 +2,51 @@ using UnityEngine;
 
 public class Generator : MonoBehaviour
 {
-    public bool isFixed = false;
-    public GeneratorUI generatorUI;
-    public AudioSource failSound;
+    public GeneratorUI ui;            // PRECISA ARRSTAR AQUI
     public ParticleSystem sparkEffect;
-    public GameObject pressEUI; // UI de "Aperte E"
+    public AudioSource failSound;
 
-    private bool playerInRange = false;
+    private bool playerInside = false;
 
-    void Update()
+    private void Update()
     {
-        if (playerInRange && !isFixed)
+        if (playerInside && Input.GetKeyDown(KeyCode.E))
         {
-            pressEUI.SetActive(true);
-
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                generatorUI.StartRepair(this);
-                pressEUI.SetActive(false);
-            }
+            ui.StartRepair(this);
         }
+    }
+
+    public void CompleteGenerator()
+    {
+        ui.HideUI();    
+
+         
+        if (QuestManager.Instance != null)
+            QuestManager.Instance.AddGeneratorCompleted();
         else
-        {
-            pressEUI.SetActive(false);
-        }
+            Debug.LogError("❌ QuestManager.Instance é NULL! Adicione ele na cena.");
+
+        ui.CompleteUI();
     }
 
-    public void FixGenerator()
+    public void FailEffect()
     {
-        if (isFixed) return;
-
-        isFixed = true;
-        generatorUI.HideUI();
-        QuestManager.Instance.AddGeneratorFixed();
-        Debug.Log("Gerador consertado!");
-    }
-
-    public void TriggerFailEffect()
-    {
-        if (failSound) failSound.Play();
         if (sparkEffect) sparkEffect.Play();
+        if (failSound) failSound.Play();
     }
 
-    void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
-            playerInRange = true;
+            playerInside = true;
     }
 
-    void OnTriggerExit(Collider other)
+    private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            playerInRange = false;
-            pressEUI.SetActive(false);
-            generatorUI.HideUI();
+            playerInside = false;
+            ui.HideUI();
         }
     }
 }

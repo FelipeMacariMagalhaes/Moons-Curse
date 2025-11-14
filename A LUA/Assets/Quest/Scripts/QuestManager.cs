@@ -1,37 +1,34 @@
 using UnityEngine;
 using TMPro;
+
 public class QuestManager : MonoBehaviour
 {
-     public static QuestManager Instance;
-    public TextMeshProUGUI questText;
-    private int generatorsFixed = 0;
-    private int totalGenerators = 3;
+    public static QuestManager Instance;
 
-    void Awake()
+    public int totalGenerators = 3;
+    public int completedGenerators = 0;
+
+    public TextMeshProUGUI questText;
+
+    private void Awake()
     {
         Instance = this;
+    }
+
+    private void Start()
+    {
         UpdateQuestText();
     }
 
-    public void AddGeneratorFixed()
+    public void AddGeneratorCompleted()
     {
-        generatorsFixed++;
+        completedGenerators++;
         UpdateQuestText();
-
-        if (generatorsFixed >= totalGenerators)
-        {
-            CompleteQuest();
-        }
     }
 
     void UpdateQuestText()
     {
-        questText.text = $"Ativar Geradores: {generatorsFixed}/{totalGenerators}";
-    }
-
-    void CompleteQuest()
-    {
-        questText.text = "✅ Todos os geradores foram ativados!";
-        Debug.Log("Quest completa!");
+        if (questText != null)
+            questText.text = completedGenerators + " / " + totalGenerators;
     }
 }

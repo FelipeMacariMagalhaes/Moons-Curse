@@ -1,121 +1,167 @@
 using UnityEngine;
+using TMPro;
 using UnityEngine.UI;
 using System.Collections;
 
 public class GeneratorUI : MonoBehaviour
 {
-    public GameObject uiPanel;
-    public Slider progressBar;
-    public RectTransform skillZone;
-    public RectTransform skillMarker;
-    public float repairSpeed = 0.2f;
+     public GameObject pressEText;   
+    public Transform player;
+    public float distanceToShow = 3f;
+    public bool generatorCompleted = false;
 
-    private Generator currentGenerator;
-    private PlayerInteractionController playerInteraction;
+    public bool isCompleted = false;
+    public GameObject uiPanel;              
+    public TextMeshProUGUI progressText;    
+    public TextMeshProUGUI skillText;      
+    public Image flashRed;                
+
+    private Generator generator;
+    private FirstPersonMovement movement;
+
+    private float progress = 0f;
     private bool repairing = false;
     private bool skillActive = false;
-    private bool markerMovingRight = true;
-    private float markerSpeed = 400f;
-    private bool failPenalty = false;
 
-    public void StartRepair(Generator generator)
+    public float repairSpeed = 8f;
+
+    KeyCode[] skillButtons = 
+    {
+        KeyCode.Space,
+        KeyCode.J,
+        KeyCode.K,
+        KeyCode.L,
+        KeyCode.F,
+        KeyCode.R
+    };
+
+    KeyCode currentButton;
+
+    private void Start()
+    {
+        pressEText.SetActive(false);
+    }
+
+    private void Update()
+    {
+        if (generatorCompleted)
+        {
+            pressEText.SetActive(false);    
+            return;
+        }
+
+        float dist = Vector3.Distance(transform.position, player.position);
+
+        if (dist <= distanceToShow)
+            pressEText.SetActive(true);
+        else
+            pressEText.SetActive(false);
+    }
+
+    public void StartRepair(Generator gen)
     {
         if (repairing) return;
 
-        currentGenerator = generator;
-        uiPanel.SetActive(true);
+        generator = gen;
         repairing = true;
+        uiPanel.SetActive(true);
 
-        // 🔒 Travar player e abaixar
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null)
-            playerInteraction = player.GetComponent<PlayerInteractionController>();
-
-        if (playerInteraction != null)
-            playerInteraction.LockPlayer();
+        // trava player
+        movement = FindObjectOfType<FirstPersonMovement>();
+        if (movement != null)
+            movement.speedOverrides.Add(() => 0f);
 
         StartCoroutine(RepairRoutine());
     }
 
     public void HideUI()
     {
-        uiPanel.SetActive(false);
         repairing = false;
         skillActive = false;
+        uiPanel.SetActive(false);
 
-        // 🔓 Liberar player
-        if (playerInteraction != null)
-            playerInteraction.UnlockPlayer();
+        // destrava o player
+        if (movement != null && movement.speedOverrides.Count > 0)
+            movement.speedOverrides.RemoveAt(movement.speedOverrides.Count - 1);
     }
 
     IEnumerator RepairRoutine()
     {
-        progressBar.value = Mathf.Clamp01(progressBar.value);
+        progressText.text = $"{(int)progress}%";
+        skillText.text = "";
 
-        while (progressBar.value < 1f && repairing)
+        while (progress < 100 && repairing)
         {
-            if (!failPenalty)
-                progressBar.value += repairSpeed * Time.deltaTime;
+            progress += repairSpeed * Time.deltaTime;
+            progress = Mathf.Clamp(progress, 0, 100);
 
-            if (!skillActive && Random.value < 0.002f)
+            progressText.text = $"{(int)progress}%";
+
+            // chance pequena de skill check
+            if (!skillActive && Random.value < 0.003f)
                 StartCoroutine(SkillCheckRoutine());
 
             yield return null;
         }
 
-        if (progressBar.value >= 1f)
+        if (progress >= 100)
         {
-            currentGenerator.FixGenerator();
+            generator.CompleteGenerator();
+            HideUI();
         }
     }
 
     IEnumerator SkillCheckRoutine()
     {
         skillActive = true;
-        skillMarker.anchoredPosition = new Vector2(-100, 0);
-        markerMovingRight = true;
 
-        while (skillActive)
+        currentButton = skillButtons[Random.Range(0, skillButtons.Length)];
+        skillText.text = $"APERTE [{currentButton}] !";
+
+        float window = 0.7f;
+        float t = 0;
+        bool pressed = false;
+
+        while (t < window)
         {
-            float dir = markerMovingRight ? 1 : -1;
-            skillMarker.anchoredPosition += new Vector2(dir * markerSpeed * Time.deltaTime, 0);
-
-            if (skillMarker.anchoredPosition.x > 100)
-                markerMovingRight = false;
-            else if (skillMarker.anchoredPosition.x < -100)
-                markerMovingRight = true;
-
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(currentButton))
             {
-                float diff = Mathf.Abs(skillMarker.anchoredPosition.x - skillZone.anchoredPosition.x);
-
-                if (diff < 20)
-                {
-                    Debug.Log("✅ Skill Check SUCCESS!");
-                    progressBar.value += 0.1f;
-                }
-                else
-                {
-                    Debug.Log("💥 Skill Check FAIL!");
-                    StartCoroutine(FailPenalty());
-                }
-
-                skillActive = false;
+                pressed = true;
+                break;
             }
-
+            t += Time.deltaTime;
             yield return null;
         }
+
+        if (pressed)
+        {
+            skillText.text = "✔ +10%";
+            progress += 10;
+        }
+        else
+        {
+            skillText.text = "❌ FALHOU -20%";
+            progress -= 20;
+            progress = Mathf.Clamp(progress, 0, 100);
+
+            StartCoroutine(FlashRed());
+            generator.FailEffect();
+        }
+
+        yield return new WaitForSeconds(0.5f);
+        skillText.text = "";
+        skillActive = false;
     }
 
-    IEnumerator FailPenalty()
+    IEnumerator FlashRed()
     {
-        failPenalty = true;
-        progressBar.value -= 0.25f;
-        progressBar.value = Mathf.Clamp01(progressBar.value);
-        currentGenerator.TriggerFailEffect();
-        Debug.Log("💥 Falha! Progresso reduzido.");
-
-        yield return new WaitForSeconds(2f);
-        failPenalty = false;
+        flashRed.color = new Color(1, 0, 0, 0.6f);
+        yield return new WaitForSeconds(0.15f);
+        flashRed.color = new Color(1, 0, 0, 0f);
+    }
+     public void CompleteUI()
+    {
+        generatorCompleted = true;
+        pressEText.SetActive(false);
     }
 }
