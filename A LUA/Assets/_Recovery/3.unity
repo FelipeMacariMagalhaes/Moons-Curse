@@ -256,6 +256,7 @@ GameObject:
   - component: {fileID: 264091127}
   - component: {fileID: 264091128}
   - component: {fileID: 264091129}
+  - component: {fileID: 264091130}
   m_Layer: 5
   m_Name: Slider
   m_TagString: Untagged
@@ -343,16 +344,30 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 264091126}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c9738c9439c607499d05782035e923e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VolumeByMovement
   audioSource: {fileID: 518898130}
-  minVolume: 0.1
+  minVolume: 0
   maxVolume: 1
   minZ: -10
   maxZ: 10
+--- !u!114 &264091130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 264091126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebad45e8951e03845994a5660169d7da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VolumeControl
+  music: {fileID: 518898130}
+  volumeSlider: {fileID: 264091128}
 --- !u!1 &489763570
 GameObject:
   m_ObjectHideFlags: 0
